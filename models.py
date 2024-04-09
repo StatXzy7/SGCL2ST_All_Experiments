@@ -52,12 +52,12 @@ class CLIPModel_resnet50(nn.Module):
     ):
         super().__init__()
         self.image_encoder = ImageEncoder_resnet50()
-#         self.spot_encoder = SpotEncoder()
+        # self.spot_encoder = SpotEncoder()
         self.image_projection = ProjectionHead(embedding_dim=image_embedding) #aka the input dim, 2048 for resnet50
         self.spot_projection = ProjectionHead(embedding_dim=spot_embedding) #3467 shared hvgs
         self.temperature = temperature
 
-    def forward(self, patches, centers, exps, adj, aug=False):
+    def forward(self, patches, centers, exps, adj, oris, sfs, aug=False):
         image_features = self.image_encoder(patches)
         spot_features = exps
         
@@ -75,7 +75,13 @@ class CLIPModel_resnet50(nn.Module):
         spots_loss = cross_entropy(logits, targets, reduction='none')
         images_loss = cross_entropy(logits.T, targets.T, reduction='none')
         loss =  (images_loss + spots_loss) / 2.0 # shape: (batch_size)
-        return loss.mean()
+        
+        contrastive_loss = loss.mean()
+        rmse_loss = contrastive_loss - contrastive_loss
+        zinb_loss = rmse_loss
+        reconstruction_loss = rmse_loss + zinb_loss
+        # return loss.mean()
+        return contrastive_loss + reconstruction_loss, contrastive_loss, rmse_loss, zinb_loss
 
 
 class myModel(nn.Module):

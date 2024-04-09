@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description='DDP for CLIP')
 parser.add_argument('--exp_name', type=str, default='clip', help='')
 parser.add_argument('--batch_size', type=int, default=256, help='')
 parser.add_argument('--max_epochs', type=int, default=200, help='')
-parser.add_argument('--num_workers', type=int, default=4, help='')
+parser.add_argument('--num_workers', type=int, default=0, help='')
 
 parser.add_argument('--init_method', default='tcp://127.0.0.1:3456', type=str, help='')
 # parser.add_argument('--dist-backend', default='gloo', type=str, help='')
@@ -30,11 +30,11 @@ parser.add_argument('--dist-backend', default='nccl', type=str, help='')
 
 parser.add_argument('--world_size', default=1, type=int, help='')
 parser.add_argument('--distributed', action='store_true', help='')
-parser.add_argument('--model', type=str, default='auto', help='')
+parser.add_argument('--model', type=str, default='resnet50_baseline', help='')
 
 # Hi
 parser.add_argument('--name', type=str, default='hist2ST', help='prefix name.')
-parser.add_argument('--data', type=str, default='cscc', help='dataset name:{"her2st","cscc"}.')
+parser.add_argument('--data', type=str, default='her2st', help='dataset name:{"her2st","cscc"}.')
 parser.add_argument('--logger', type=str, default='../logs/my_logs', help='logger path.')
 parser.add_argument('--fold', type=int, default=5, help='dataset fold.')
 parser.add_argument('--prune', type=str, default='Grid', help='how to prune the edge:{"Grid","NA"}')
@@ -148,8 +148,13 @@ def main():
     local_rank = int(os.environ.get("SLURM_LOCALID", 0))
     rank = int(os.environ.get("SLURM_LOCALID", 0))*ngpus_per_node + local_rank
     
-    current_device = local_rank
+    # print("local_rank",local_rank)
+    # print("rank",rank)
+    
+    current_device = 3
     torch.cuda.set_device(current_device)
+
+    device = torch.device(f'cuda:{current_device}') if torch.cuda.is_available() else torch.device('cpu')
 
     """ this block initializes a process group and initiate communications
 		between all processes running on all nodes """
@@ -158,7 +163,7 @@ def main():
     #init the process group
     # dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=args.world_size, rank=rank)
     torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=args.world_size, rank=rank)
-
+    
     print("process group ready!")
 
 
@@ -171,9 +176,11 @@ def main():
         model = myModel().cuda(current_device)
         print("Image encoder is ResNet50, Expression encoder is autoencoder")
     model = nn.parallel.DistributedDataParallel(model, device_ids=[current_device])
+    # model = nn.DataParallel(model, device_ids=[current_device])
 
     #load the data
     print('From Rank: {}, ==> Preparing data..'.format(rank))
+    print('Current_device: cuda {}'.format(current_device))
     train_loader, test_loader = build_loaders(args)
     
     # Initialize optimizer and learning rate scheduler

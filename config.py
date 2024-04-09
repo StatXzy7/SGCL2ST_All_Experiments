@@ -16,7 +16,7 @@ factor = 0.2
 
 model_name = 'auto'
 image_embedding = 2048
-spot_embedding = 171 #HER2:785, cSCC:171
+spot_embedding = 785 #HER2:785, cSCC:171
 
 pretrained = False
 trainable = True 

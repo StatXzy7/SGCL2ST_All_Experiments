@@ -49,7 +49,7 @@ class CLIP_HER2ST(torch.utils.data.Dataset):
         print("Test set names:", te_names)
         tr_names = list(set(samples)-set(te_names))
         print("Train set names:",tr_names)
-
+        
         if train:
             self.names = tr_names
         else:
